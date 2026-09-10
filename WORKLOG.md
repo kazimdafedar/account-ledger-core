@@ -46,10 +46,14 @@ reconstructed afterward.
   dispatch, `closingBalance(account, bucketDay, asOfDay)`, `activeHoldsTotal`,
   `currentHoldState`, `runDailyClose(day)` (fee + interest, once per day, never
   re-run), `capitalizeInterest(day)`.
-- `mvn -q compile` clean on first full pass (had to fix one thing: initial draft
-  of `entryId()` used the seq field before it was incremented for that entry —
-  fixed by relying on Java's guaranteed left-to-right argument evaluation so
-  `nextSeq()` runs before `entryId(...)` reads `seq`).
+- `mvn -q compile` clean on first full pass. One thing I deliberately checked
+  rather than assumed: `entryId(prefix, suffix)` reads the mutable `seq` field,
+  and it's called as a sibling argument to `nextSeq()` in the same
+  `new LedgerEntry(nextSeq(), entryId(...), ...)` call — that only produces a
+  matching id/seq pair because Java guarantees left-to-right evaluation of
+  argument expressions. Left a comment on `entryId()` calling this out so a
+  future refactor (e.g. reordering those two arguments) doesn't silently break
+  id/seq correspondence.
 - Committed: "Core domain model: event-sourced ledger engine".
 
 ## Fri Sep 11 2026, 00:07–00:08 IST — Replay script
@@ -91,3 +95,36 @@ reconstructed afterward.
 - Final: `mvn -q test` → 23 run, 1 failure (the intentional one), 22 green.
   Exit code 1, as expected for a build with a deliberately failing test —
   documented in README.md so this isn't mistaken for a broken build.
+
+## Fri Sep 11 2026, 00:10–00:14 IST — Documentation
+
+- Wrote `REJECTED.md` first, since it forced me to state, in writing, exactly
+  which of the 8 acceptance criteria are wrong and why, before writing README
+  copy that might otherwise gloss over the disagreements. Verdict: criteria
+  2, 6, 7, 8 rejected; 1, 3, 4 accepted; 5 accepted with a clarifying note
+  (Auth-B is actually declined, not merely "unsettled").
+- Wrote `AMBIGUITIES.md` — 11 items, each with a concrete resolution and a
+  pointer to the code/test that encodes it. Deliberately did not pad this
+  with trivial non-ambiguities just to look thorough; every item here changed
+  an actual line of code.
+- Wrote `NUMBERS.md`, going through every constant and, for the ones I
+  actually chose (rounding mode, no-epsilon, remainder allocation,
+  capitalization-total definition, fee-currency-scope), explicitly answering
+  "why this and not half it" per the brief's instruction.
+- Wrote `README.md` last, once the other three existed to link to. Verified
+  every command in it actually runs as written (`mvn -q compile exec:java`,
+  `mvn -q test`, `mvn -q test -Dtest='!OverSettlementExceedsHoldFailingTest'`)
+  before committing, rather than describing intended behavior from memory.
+- Corrected one inaccuracy caught during this pass: an earlier draft of this
+  WORKLOG and README claimed a compile-order bug in `LedgerEngine.entryId()`
+  had to be "fixed." On review that never actually happened — it was designed
+  correctly from the start by relying on Java's left-to-right argument
+  evaluation. Rewrote both to describe what was actually verified (added a
+  guarding code comment) instead of a fix that didn't occur — this worklog is
+  supposed to be real, not padded with invented drama.
+
+## Fri Sep 11 2026, 00:14 IST — Done
+
+- Final state: 3 commits (scaffold, core engine, replay+tests), plus this
+  documentation commit. `mvn -q compile exec:java` prints the full six-day
+  report; `mvn -q test` runs 23 tests, 22 green + 1 intentionally red.

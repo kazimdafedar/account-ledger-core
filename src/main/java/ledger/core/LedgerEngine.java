@@ -333,6 +333,11 @@ public final class LedgerEngine {
         return ++seq;
     }
 
+    /** Reads the mutable {@code seq} field directly. Callers rely on this being
+     *  invoked AFTER {@link #nextSeq()} has already incremented {@code seq} for
+     *  the entry being built (e.g. {@code new LedgerEntry(nextSeq(), entryId(...), ...)}
+     *  — Java guarantees left-to-right evaluation of argument expressions, so
+     *  {@code nextSeq()} runs first). Do not reorder those call sites. */
     private String entryId(String prefix, String suffix) {
         return prefix + "-" + suffix + "-" + seq;
     }
